@@ -1,0 +1,5 @@
+python main.py -o "x**2 + 4*y**2 - 2*x + 8*y" -c "x + 2*y - 7" -v -g
+
+python main.py -o "48*x + 96*y - x**2 - 2*x*y - 9*y**2" -c "20*x + 4*y - 216" -v -g
+
+python main.py -o "2.5 * x**0.45 * y**0.55" -c "40*x + 50*y - 500000" -v
