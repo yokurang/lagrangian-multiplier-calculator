@@ -89,6 +89,21 @@ class LagrangianMultiplier:
         
         return solution
 
+    def calculate_optimum_value(self, solution):
+        """
+        Calculate the value of the objective function at the optimal solution.
+        """
+        # Extract the values for the variables from the solution
+        variable_values = {var: solution[var] for var in self.objective.variables if var in solution}
+        
+        # Substitute the solution values into the objective function
+        optimum_value = self.objective.expr.subs(variable_values)
+        
+        # Step 5: Show the optimum value of the objective function
+        self.steps.append(f"Step 5: Calculate the optimum value of the objective function at the solution point: {optimum_value}")
+        
+        return optimum_value
+
     def print_steps(self):
         for step in self.steps:
             print(step)
@@ -187,6 +202,9 @@ def main():
     print("\nSolution:")
     solution = lagrange.solve_equations()
     print(solution)
+
+    optimum_value = lagrange.calculate_optimum_value(solution)
+    print(f"\nOptimum value of the objective function at the solution point: {optimum_value}")
     
     if args.verbose:
         print("\nDetailed steps:")
