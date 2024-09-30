@@ -23,36 +23,6 @@ class Function:
         return self.expr_string
 
 
-def get_user_input():
-    print("Enter the objective function f(...):")
-    obj_func = input("f(...) = ")
-
-    print("Enter the constraint function g(...) = 0:")
-    const_func = input("g(...) = ")
-
-    return obj_func, const_func
-
-
-def setup_problem(obj_func, const_func):
-    f = Function(obj_func)
-    g = Function(const_func)
-
-    # Ensure both functions have the same variables
-    if set(f.variables) != set(g.variables):
-        raise ValueError(
-            "Objective and constraint functions must have the same variables."
-        )
-
-    return f, g
-
-
-def compute_gradients(f, g):
-    grad_f = f.gradient()
-    grad_g = g.gradient()
-
-    return grad_f, grad_g
-
-
 class LagrangianMultiplier:
     def __init__(self, objective_func, constraint_func):
         self.objective = objective_func
@@ -109,14 +79,25 @@ class LagrangianMultiplier:
                 "No solution has been found yet. Please call solve_equations first."
             )
 
-        # Extract the variable names (e.g., x, y) and their corresponding values from the solution
-        variable_values = {
-            var: value
-            for var, value in zip(
-                self.objective.variables,
-                self.solution[0][: len(self.objective.variables)],
-            )
-        }
+        # Check if the solution is a dictionary (single solution case)
+        if isinstance(self.solution, dict):
+            # Extract the variable names (e.g., x, y) and their corresponding values from the dictionary
+            variable_values = {
+                var: self.solution[var] for var in self.objective.variables
+            }
+        # Check if the solution is a list of dictionaries or tuples (multiple solutions case)
+        elif isinstance(self.solution[0], dict):
+            variable_values = {
+                var: self.solution[0][var] for var in self.objective.variables
+            }
+        elif isinstance(self.solution[0], tuple):
+            # Extract the values from the tuple and map them to the variables
+            variable_values = {
+                var: value
+                for var, value in zip(self.objective.variables, self.solution[0])
+            }
+        else:
+            raise ValueError("Unexpected solution format")
 
         # Directly substitute the solution values into the objective function
         optimum_value = self.objective.expr.subs(variable_values)
@@ -136,6 +117,73 @@ class LagrangianMultiplier:
     def print_equations(self):
         for i, eq in enumerate(self.equations):
             print(f"Equation {i+1}: {eq}")
+
+    def plot_problem(self):
+        num_vars = len(self.objective.variables)
+        if num_vars > 3:
+            print("Cannot plot functions with more than 3 variables.")
+            return
+
+        if not os.path.exists("plots"):
+            os.makedirs("plots")
+
+        if num_vars == 2:
+            self._plot_2d()
+        elif num_vars == 3:
+            self._plot_3d()
+
+    def _plot_2d(self):
+        x, y = self.objective.variables
+        f = lambdify((x, y), self.objective.expr, "numpy")
+        g = lambdify((x, y), self.constraint.expr, "numpy")
+
+        x_range = np.linspace(-10, 10, 100)
+        y_range = np.linspace(-10, 10, 100)
+        X, Y = np.meshgrid(x_range, y_range)
+        Z = f(X, Y)
+
+        fig, ax = plt.subplots()
+        contour = ax.contourf(X, Y, Z, levels=20)
+        fig.colorbar(contour)
+
+        ax.contour(X, Y, g(X, Y), levels=[0], colors="r")
+
+        ax.set_xlabel(str(x))
+        ax.set_ylabel(str(y))
+        ax.set_title("Objective Function and Constraint")
+
+        plt.savefig("plots/2d_plot.png")
+        plt.close()
+
+    def _plot_3d(self):
+        x, y, z = self.objective.variables
+        f = lambdify((x, y, z), self.objective.expr, "numpy")
+        g = lambdify((x, y, z), self.constraint.expr, "numpy")
+
+        x_range = np.linspace(-5, 5, 20)
+        y_range = np.linspace(-5, 5, 20)
+        X, Y = np.meshgrid(x_range, y_range)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+
+        Z = f(X, Y, 0)
+        surf = ax.plot_surface(X, Y, Z, cmap="viridis", alpha=0.8)
+
+        Z_constraint = np.zeros_like(X)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                Z_constraint[i, j] = solve(g(X[i, j], Y[i, j], z), z)[0]
+        ax.plot_surface(X, Y, Z_constraint, color="r", alpha=0.5)
+
+        ax.set_xlabel(str(x))
+        ax.set_ylabel(str(y))
+        ax.set_zlabel(str(z))
+        ax.set_title("Objective Function and Constraint")
+        plt.colorbar(surf)
+
+        plt.savefig("plots/3d_plot.png")
+        plt.close()
 
 
 def parse_arguments():
